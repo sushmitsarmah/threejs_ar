@@ -23,6 +23,7 @@
         <a-entity camera></a-entity>
     </a-scene> -->
 <script src="/js/plain_globe.js"></script>
+<!-- <script src="/js/plain_globe_web.js"></script> -->
 <script>
     var xhr;
 
@@ -34,8 +35,7 @@
                 var data = JSON.parse(xhr.responseText);
                 window.data = data;
                 addData(data);
-                animate();
-                // globe.animate();
+                // animate();
                 // document.body.style.backgroundImage = 'none'; // remove loading
             }
         }

@@ -43,7 +43,7 @@ var Shaders = {
     }
 };
 
-var sphereRadius = 1;
+var sphereRadius = 200;
 
 var scene, camera, renderer, clock, deltaTime, totalTime;
 var arToolkitSource, arToolkitContext;
@@ -61,7 +61,8 @@ function initialize() {
     scene = new THREE.Scene();
     let ambientLight = new THREE.AmbientLight(0xcccccc, 0.5);
     scene.add(ambientLight);
-    camera = new THREE.Camera();
+    camera = new THREE.PerspectiveCamera(30, 640 / 480, 1, 20000);
+    camera.position.z = 1000;
     scene.add(camera);
     renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -80,47 +81,47 @@ function initialize() {
     ////////////////////////////////////////////////////////////
     // setup arToolkitSource
     ////////////////////////////////////////////////////////////
-    arToolkitSource = new THREEx.ArToolkitSource({
-        sourceType: 'webcam',
-    });
-    function onResize() {
-        arToolkitSource.onResize()
-        arToolkitSource.copySizeTo(renderer.domElement)
-        if (arToolkitContext.arController !== null) {
-            arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)
-        }
-    }
-    arToolkitSource.init(function onReady() {
-        onResize()
-    });
+    // arToolkitSource = new THREEx.ArToolkitSource({
+    //     sourceType: 'webcam',
+    // });
+    // function onResize() {
+    //     arToolkitSource.onResize()
+    //     arToolkitSource.copySizeTo(renderer.domElement)
+    //     if (arToolkitContext.arController !== null) {
+    //         arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)
+    //     }
+    // }
+    // arToolkitSource.init(function onReady() {
+    //     onResize()
+    // });
 
     // handle resize event
-    window.addEventListener('resize', function () {
-        onResize()
-    });
+    // window.addEventListener('resize', function () {
+    //     onResize()
+    // });
 
     ////////////////////////////////////////////////////////////
     // setup arToolkitContext
     ////////////////////////////////////////////////////////////	
     // create atToolkitContext
-    arToolkitContext = new THREEx.ArToolkitContext({
-        cameraParametersUrl: 'data/camera_para.dat',
-        detectionMode: 'mono'
-    });
+    // arToolkitContext = new THREEx.ArToolkitContext({
+    //     cameraParametersUrl: 'data/camera_para.dat',
+    //     detectionMode: 'mono'
+    // });
 
     // copy projection matrix to camera when initialization complete
-    arToolkitContext.init(function onCompleted() {
-        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-    });
+    // arToolkitContext.init(function onCompleted() {
+    //     camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+    // });
     ////////////////////////////////////////////////////////////
     // setup markerRoots
     ////////////////////////////////////////////////////////////
     // build markerControls
     markerRoot1 = new THREE.Group();
     scene.add(markerRoot1);
-    let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, camera, {
-        type: 'pattern', patternUrl: "data/hiro.patt", changeMatrixMode: 'cameraTransformMatrix'
-    })
+    // let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+    //     type: 'pattern', patternUrl: "data/hiro.patt",
+    // })
     let geometry1 = new THREE.SphereGeometry(sphereRadius, 32, 32);
 
     shader = Shaders['earth'];
@@ -130,82 +131,99 @@ function initialize() {
         uniforms: uniforms,
         vertexShader: shader.vertexShader,
         fragmentShader: shader.fragmentShader
-    });
+    }); 
+
+
+    // let loader = new THREE.TextureLoader();
+    // let texture = loader.load('images/earth-sphere.jpg', render);
+    // let material1 = new THREE.MeshLambertMaterial({ map: texture, opacity: 0.5 });
 
     sphere = new THREE.Mesh(geometry1, material);
-    scene.add(sphere);
+    sphere.position.y = 0;
+    sphere.position.x = 0;
+    markerRoot1.add(sphere);
 
     // atmosphere {{{
-    shader = Shaders['atmosphere'];
-    uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-    material = new THREE.ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: shader.vertexShader,
-        fragmentShader: shader.fragmentShader,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        transparent: true
-    });
+    // shader = Shaders['atmosphere'];
+    // uniforms = THREE.UniformsUtils.clone(shader.uniforms);
+    // material = new THREE.ShaderMaterial({
+    //     uniforms: uniforms,
+    //     vertexShader: shader.vertexShader,
+    //     fragmentShader: shader.fragmentShader,
+    //     side: THREE.BackSide,
+    //     blending: THREE.AdditiveBlending,
+    //     transparent: true
+    // });
 
-    atmosphereMesh = new THREE.Mesh(geometry1, material);
-    atmosphereMesh.scale.set(1.1, 1.1, 1.1);
-    atmosphereMesh.name = 'atmosphere';
-    markerRoot1.add(atmosphereMesh);
+    // atmosphereMesh = new THREE.Mesh(geometry1, material);
+    // atmosphereMesh.scale.set(1.1, 1.1, 1.1);
+    // atmosphereMesh.name = 'atmosphere';
+    // markerRoot1.add(atmosphereMesh);
     // }}}
 
     // hollow-circle && focus-circle {{{
-    let geometry = new THREE.Geometry();
-    for (var i = 0; i <= 32; i += 1) {
-        var x = Math.cos(i / 32 * 2 * Math.PI);
-        var y = Math.sin(i / 32 * 2 * Math.PI);
-        var vertex = new THREE.Vector3(x, y, 0);
-        geometry.vertices.push(vertex);
-    }
-    material = new THREE.LineBasicMaterial({
-        color: 0xcccccc,
-        linewidth: 2
-    });
-    circleMesh = new THREE.Line(geometry, material);
-    for (i = 0; i < 3; i += 1) {
-        focusCircles.push(circleMesh.clone());
-    }
-    for (i = 0; i < 3; i += 1) {
-        focusCircles[i].visible = false;
-        markerRoot1.add(focusCircles[i]);
-    }
+    // let geometry = new THREE.Geometry();
+    // for (var i = 0; i <= 32; i += 1) {
+    //     var x = Math.cos(i / 32 * 2 * Math.PI);
+    //     var y = Math.sin(i / 32 * 2 * Math.PI);
+    //     var vertex = new THREE.Vector3(x, y, 0);
+    //     geometry.vertices.push(vertex);
+    // }
+    // material = new THREE.LineBasicMaterial({
+    //     color: 0xcccccc,
+    //     linewidth: 2
+    // });
+    // circleMesh = new THREE.Line(geometry, material);
+    // for (i = 0; i < 3; i += 1) {
+    //     focusCircles.push(circleMesh.clone());
+    // }
+    // for (i = 0; i < 3; i += 1) {
+    //     focusCircles[i].visible = false;
+    //     markerRoot1.add(focusCircles[i]);
+    // }
     // }}}
 
     // starfield-background {{{
-    var texture = THREE.ImageUtils.loadTexture('images/starfield.png');
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4, 4);
-    material = new THREE.MeshBasicMaterial({
-        side: THREE.BackSide,
-        map: texture,
-        blending: THREE.AdditiveBlending,
-    });
-    var cubeMaterials = [];
-    for (var i = 0; i < 6; i++) {
-        cubeMaterials.push(material);
-    }
+    // var texture = THREE.ImageUtils.loadTexture('images/starfield.png');
+    // texture.wrapS = THREE.RepeatWrapping;
+    // texture.wrapT = THREE.RepeatWrapping;
+    // texture.repeat.set(4, 4);
+    // material = new THREE.MeshBasicMaterial({
+    //     side: THREE.BackSide,
+    //     map: texture,
+    //     blending: THREE.AdditiveBlending,
+    // });
+    // var cubeMaterials = [];
+    // for (var i = 0; i < 6; i++) {
+    //     cubeMaterials.push(material);
+    // }
 
-    starfieldMesh = new THREE.Mesh(
-        new THREE.CubeGeometry(100, 100, 100),
-        new THREE.MeshFaceMaterial(cubeMaterials)
-    );
-    starfieldMesh.name = 'starfield';
-    markerRoot1.add(starfieldMesh);
+    // starfieldMesh = new THREE.Mesh(
+    //     new THREE.CubeGeometry(100, 100, 100),
+    //     new THREE.MeshFaceMaterial(cubeMaterials)
+    // );
+    // starfieldMesh.name = 'starfield';
+    // markerRoot1.add(starfieldMesh);
     // }}}
+
+/*     let pointLight = new THREE.PointLight(0xffffff, 1, 100);
+    pointLight.position.set(0.5, 3, 2);
+    // create a mesh to help visualize the position of the light
+    pointLight.add(
+        new THREE.Mesh(
+            new THREE.SphereBufferGeometry(0.05, 16, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.5 })
+        )
+    );
+    markerRoot1.add(pointLight); */
 }
 function update() {
-    if (sphere.visible){
-        sphere.rotation.y += 0.01;
+    if (markerRoot1.visible){
         markerRoot1.rotation.y += 0.01;
     }
     // update artoolkit on every frame
-    if (arToolkitSource.ready !== false)
-        arToolkitContext.update(arToolkitSource.domElement);
+    // if (arToolkitSource.ready !== false)
+    //     arToolkitContext.update(arToolkitSource.domElement);
 }
 function render() {
     renderer.render(scene, camera);
@@ -248,21 +266,26 @@ function addCity(lat, lng, city, color, uri) {
     const material = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         vertexColors: THREE.FaceColors
-    });
-    
-    const pointDim = sphereRadius / 100;
-    const pointHeight = 0.1;
-
-    const point3d = new THREE.CubeGeometry(pointDim, pointDim, pointHeight);
-    point = new THREE.Mesh(point3d, material);    
+    }); 
 
     const phi = (90 - lat) * Math.PI / 180;
     const theta = (180 - lng) * Math.PI / 180;
+
+    const pointDim = sphereRadius / 100;
+    const pointHeight = sphereRadius / 10;
+
+    const point3d = new THREE.CubeGeometry(pointDim, pointDim, pointHeight);
+    point = new THREE.Mesh(point3d, material);
 
     point.position.x = sphereRadius * Math.sin(phi) * Math.cos(theta);
     point.position.y = sphereRadius * Math.cos(phi);
     point.position.z = sphereRadius * Math.sin(phi) * Math.sin(theta);
     point.lookAt(sphere.position);
+
+    // point.position.x = sphereRadius * Math.sin(phi) * Math.cos(theta);
+    // point.position.y = sphereRadius * Math.cos(phi);
+    // point.position.z = sphereRadius * Math.sin(phi) * Math.sin(theta);
+    // point.lookAt(sphere.position);
 
     for (let i = 0; i < point.geometry.faces.length; i++) {
         point.geometry.faces[i].color = color;
