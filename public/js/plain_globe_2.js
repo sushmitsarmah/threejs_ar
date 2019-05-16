@@ -267,7 +267,7 @@ function addData(data) {
 
 function addCity(lat, lng, city, color, uri) {
     const phi = (90 - lat) * Math.PI / 180;
-    const theta = (180 - lng) * Math.PI / 180;
+    const theta = (180 + lng) * Math.PI / 180;
 
     addPoints(phi, theta, color);
 
@@ -291,7 +291,7 @@ function addPoints(phi, theta, color) {
     const point3d = new THREE.CubeGeometry(pointDim, pointDim, pointHeight);
     point = new THREE.Mesh(point3d, material);
 
-    point.position.x = sphereRadius * Math.sin(phi) * Math.cos(theta);
+    point.position.x = -sphereRadius * Math.sin(phi) * Math.cos(theta);
     point.position.y = sphereRadius * Math.cos(phi);
     point.position.z = sphereRadius * Math.sin(phi) * Math.sin(theta);
     point.lookAt(sphere.position);
