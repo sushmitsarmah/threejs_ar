@@ -43,36 +43,63 @@ var Shaders = {
     }
 };
 
-var sphereRadius = 1;
+let sphereRadius = 1;
 
-var scene, camera, renderer, clock, deltaTime, totalTime;
-var arToolkitSource, arToolkitContext;
-var markerRoot1;
-var sphere;
+let scene, camera, renderer, clock, deltaTime, totalTime;
+let arToolkitSource, arToolkitContext;
+let markerRoot;
+let groupPoints;
+let meshObjects;
+let sphere;
 
-var shader, uniforms, material;
-var pointMesh = [], textMesh = [];
-var circleMesh, focusCircles = [], innerRadius;
-var cities = [], activeCity = -1;
+let shader, uniforms, material;
+let pointMesh = [], textMesh = [];
+let circleMesh, focusCircles = [], innerRadius;
+let cities = [], activeCity = -1;
 
+let textFont;
+
+loadFont('helvetiker_regular.typeface.json');
 initialize();
 animate();
+
+function loadFont(fontfile) {
+    var loader = new THREE.FontLoader();
+
+    loader.load(`fonts/${fontfile}`, function (font) {
+        textFont = font;
+    });
+}
+
 function initialize() {
+    // initialize the scene
     scene = new THREE.Scene();
+
+    // add some ambient light to the scene
     let ambientLight = new THREE.AmbientLight(0xcccccc, 0.5);
     scene.add(ambientLight);
+    
+    // initialize the camera. will be used by AR
     camera = new THREE.Camera();
     scene.add(camera);
+    
+    // initialize the renderer.
     renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true
     });
-    renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+
+    // set the size, position, default color of the renderer
+    renderer.setClearColor(new THREE.Color('lightgrey'), 0);
     renderer.setSize(640, 480);
-    renderer.domElement.style.position = 'absolute'
-    renderer.domElement.style.top = '0px'
-    renderer.domElement.style.left = '0px'
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0px';
+    renderer.domElement.style.left = '0px';
+
+    // add the renderer to the body of the html
     document.body.appendChild(renderer.domElement);
+    
+    // inititalize the clock
     clock = new THREE.Clock();
     deltaTime = 0;
     totalTime = 0;
@@ -101,7 +128,8 @@ function initialize() {
 
     ////////////////////////////////////////////////////////////
     // setup arToolkitContext
-    ////////////////////////////////////////////////////////////	
+    ////////////////////////////////////////////////////////////
+
     // create atToolkitContext
     arToolkitContext = new THREEx.ArToolkitContext({
         cameraParametersUrl: 'data/camera_para.dat',
@@ -112,16 +140,37 @@ function initialize() {
     arToolkitContext.init(function onCompleted() {
         camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
     });
+
     ////////////////////////////////////////////////////////////
     // setup markerRoots
     ////////////////////////////////////////////////////////////
-    // build markerControls
-    markerRoot1 = new THREE.Group();
-    scene.add(markerRoot1);
-    let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, camera, {
-        type: 'pattern', patternUrl: "data/hiro.patt", changeMatrixMode: 'cameraTransformMatrix'
-    })
-    let geometry1 = new THREE.SphereGeometry(sphereRadius, 32, 32);
+
+    // markerControls options
+    const ARMarkerOptions = {
+        type: 'pattern',
+        patternUrl: "data/hiro.patt"
+        // changeMatrixMode: 'cameraTransformMatrix'
+    };
+
+    // create the markerRoot group for AR marker control and add to scene
+    markerRoot = new THREE.Group();
+    scene.add(markerRoot);
+
+    // AR marker controls. this sets the globe on the marker seen
+    const markerControls = new THREEx.ArMarkerControls(
+        arToolkitContext,
+        markerRoot,
+        ARMarkerOptions
+    );    
+
+    // mesh groups. markerRoot is used by AR. others are used for rotation.
+    meshObjects = new THREE.Group();
+    groupPoints = new THREE.Group();
+    meshObjects.add(groupPoints);
+    markerRoot.add(meshObjects);
+
+    // globe earth
+    const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 32);
 
     shader = Shaders['earth'];
     uniforms = THREE.UniformsUtils.clone(shader.uniforms);
@@ -132,10 +181,10 @@ function initialize() {
         fragmentShader: shader.fragmentShader
     });
 
-    sphere = new THREE.Mesh(geometry1, material);
-    scene.add(sphere);
+    sphere = new THREE.Mesh(sphereGeometry, material);
+    meshObjects.add(sphere);
 
-    // atmosphere {{{
+    // atmosphere
     shader = Shaders['atmosphere'];
     uniforms = THREE.UniformsUtils.clone(shader.uniforms);
     material = new THREE.ShaderMaterial({
@@ -147,13 +196,12 @@ function initialize() {
         transparent: true
     });
 
-    atmosphereMesh = new THREE.Mesh(geometry1, material);
+    atmosphereMesh = new THREE.Mesh(sphereGeometry, material);
     atmosphereMesh.scale.set(1.1, 1.1, 1.1);
     atmosphereMesh.name = 'atmosphere';
-    markerRoot1.add(atmosphereMesh);
-    // }}}
+    meshObjects.add(atmosphereMesh);
 
-    // hollow-circle && focus-circle {{{
+    // hollow-circle && focus-circle
     let geometry = new THREE.Geometry();
     for (var i = 0; i <= 32; i += 1) {
         var x = Math.cos(i / 32 * 2 * Math.PI);
@@ -171,41 +219,18 @@ function initialize() {
     }
     for (i = 0; i < 3; i += 1) {
         focusCircles[i].visible = false;
-        markerRoot1.add(focusCircles[i]);
+        meshObjects.add(focusCircles[i]);
     }
-    // }}}
-
-    // starfield-background {{{
-    var texture = THREE.ImageUtils.loadTexture('images/starfield.png');
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4, 4);
-    material = new THREE.MeshBasicMaterial({
-        side: THREE.BackSide,
-        map: texture,
-        blending: THREE.AdditiveBlending,
-    });
-    var cubeMaterials = [];
-    for (var i = 0; i < 6; i++) {
-        cubeMaterials.push(material);
-    }
-
-    starfieldMesh = new THREE.Mesh(
-        new THREE.CubeGeometry(100, 100, 100),
-        new THREE.MeshFaceMaterial(cubeMaterials)
-    );
-    starfieldMesh.name = 'starfield';
-    markerRoot1.add(starfieldMesh);
-    // }}}
 }
+
 function update() {
-    if (sphere.visible){
-        sphere.rotation.y += 0.01;
-        markerRoot1.rotation.y += 0.01;
+    if (markerRoot.visible){
+        meshObjects.rotation.y += 0.01;
     }
     // update artoolkit on every frame
-    if (arToolkitSource.ready !== false)
+    if (arToolkitSource.ready !== false){
         arToolkitContext.update(arToolkitSource.domElement);
+    }
 }
 function render() {
     renderer.render(scene, camera);
@@ -225,9 +250,9 @@ function colorFn(hue) {
 };
 
 function addData(data) {
-    var lat, lng, color, uri, i, colorFnWrapper;
+    let lat, lng, color, uri, i, colorFnWrapper;
 
-    colorFnWrapper = function (data, i) { return colorFn(data[i][3]); }
+    colorFnWrapper = (data, i) => colorFn(data[i][3]);
 
     for (i = 0; i < data.length; i += 1) {
         city = data[i][0];
@@ -237,27 +262,34 @@ function addData(data) {
         uri = data[i][4];
 
         addCity(lat, lng, city, color, uri);
-        pointMesh.push(point);
-        // textMesh.push(text);
-        markerRoot1.add(point);
-        // markerRoot1.add(text);
     }
 };
 
 function addCity(lat, lng, city, color, uri) {
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (180 - lng) * Math.PI / 180;
+
+    addPoints(phi, theta, color);
+
+    cities.push({
+        'position': point.position.clone(),
+        'name': city,
+        'uri': uri
+    });
+
+}
+
+function addPoints(phi, theta, color) {
     const material = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         vertexColors: THREE.FaceColors
     });
-    
+
     const pointDim = sphereRadius / 100;
     const pointHeight = 0.1;
 
     const point3d = new THREE.CubeGeometry(pointDim, pointDim, pointHeight);
-    point = new THREE.Mesh(point3d, material);    
-
-    const phi = (90 - lat) * Math.PI / 180;
-    const theta = (180 - lng) * Math.PI / 180;
+    point = new THREE.Mesh(point3d, material);
 
     point.position.x = sphereRadius * Math.sin(phi) * Math.cos(theta);
     point.position.y = sphereRadius * Math.cos(phi);
@@ -268,13 +300,16 @@ function addCity(lat, lng, city, color, uri) {
         point.geometry.faces[i].color = color;
     }
 
-    cities.push({ 'position': point.position.clone(), 'name': city, 'uri': uri });
+    pointMesh.push(point);
+    groupPoints.add(point);
+}
 
-    // text
-/*     var text3d = new THREE.TextGeometry(city, {
+function addText(city, phi, theta, color) {
+    var text3d = new THREE.TextGeometry(city, {
         size: 5,
         height: 0.5, // thickness of the text
-        curveSegments: 2
+        curveSegments: 2,
+        font: textFont
     });
     text = new THREE.Mesh(text3d, material);
 
@@ -292,5 +327,8 @@ function addCity(lat, lng, city, color, uri) {
         text.geometry.faces[i].color = color;
     }
 
-    text.visible = false; */
+    text.visible = true;
+
+    textMesh.push(text);
+    groupPoints.add(text);
 }
